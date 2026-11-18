@@ -99,6 +99,9 @@
                             <!-- ApiUtil is referenced by the generated delegate interfaces -->
                             <supportingFilesToGenerate>ApiUtil.java</supportingFilesToGenerate>
                             <configOptions>
+                                <!-- Emit packages directly under target/generated-sources/openapi so IntelliJ's
+                                     auto-detected generated-sources root matches the Maven compile root -->
+                                <sourceFolder>.</sourceFolder>
                                 <useSpringBoot3>true</useSpringBoot3>
                                 <delegatePattern>true</delegatePattern>
                                 <useTags>true</useTags>
