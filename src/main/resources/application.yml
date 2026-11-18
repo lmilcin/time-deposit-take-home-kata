@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: time-deposit
+  # Connection details must be supplied via environment variables (no defaults).
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  flyway:
+    locations: classpath:db/migration
+
+springdoc:
+  swagger-ui:
+    # Swagger UI renders the hand-written contract served as a static resource.
+    url: /openapi.yaml
