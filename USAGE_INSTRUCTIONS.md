@@ -51,8 +51,12 @@ This file documents:
 2. Expand an endpoint, click **Try it out**, then **Execute**:
    * `GET /time-deposits` — returns all time deposits with their withdrawals, ordered by `id`
      ascending. Set the optional `afterId` parameter to fetch only deposits with a greater `id`.
-   * `POST /time-deposits/calculate-interest` — applies monthly interest to the balances
-     of all time deposits, then advances each deposit's `days` by one; returns `204 No Content`.
+   * `POST /time-deposits/calculate-interest` — runs the daily interest batch for the required
+     `accounting_date` (e.g. `2026-03-09`); returns `204 No Content`. Monthly interest is applied
+     to each deposit on its own monthly anniversary, after an initial no-accrual period of 30 days
+     (basic, student) or 45 days (premium); then every deposit's `days` advances by one.
+     With the seed data and `accounting_date=2026-03-09`, deposits 2, 3, 4 and 6 are due
+     (deposit 4 is a student deposit older than a year, so its balance does not change).
 
 The OpenAPI contract that Swagger UI renders is available at
 <http://localhost:8080/openapi.yaml>.
@@ -61,8 +65,12 @@ The same calls with `curl`:
 
 ```bash
 curl --compressed http://localhost:8080/time-deposits
-curl -X POST -i http://localhost:8080/time-deposits/calculate-interest
+curl -X POST -i "http://localhost:8080/time-deposits/calculate-interest?accounting_date=2026-03-09"
 ```
+
+The accounting date is the date the batch runs for and may differ from the current calendar
+date. Running the same accounting date again applies no further interest, but still advances
+`days` (preventing repeated runs is not implemented yet).
 
 JSON responses are gzip-compressed when the client sends `Accept-Encoding: gzip`
 (`curl --compressed` does; Swagger UI and browsers do so automatically).
