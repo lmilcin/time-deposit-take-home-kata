@@ -14,9 +14,24 @@ paths:
       tags: [TimeDeposits]
       operationId: getTimeDeposits
       summary: Retrieve all time deposits
+      description: >-
+        Returns all time deposits with their withdrawals, ordered by `id` ascending.
+        An interrupted fetch can be resumed by passing the `id` of the last received
+        time deposit as `afterId`.
+      parameters:
+        - name: afterId
+          in: query
+          required: false
+          description: >-
+            Return only time deposits with an `id` greater than this value (exclusive).
+            Omit to fetch from the beginning.
+          schema:
+            type: integer
+            format: int32
+          example: 3
       responses:
         '200':
-          description: List of all time deposits with their withdrawals
+          description: Time deposits with their withdrawals, ordered by `id` ascending
           content:
             application/json:
               schema:
@@ -32,6 +47,7 @@ paths:
 components:
   schemas:
     TimeDepositList:
+      description: Time deposits ordered by `id` ascending.
       type: array
       items:
         $ref: '#/components/schemas/TimeDeposit'

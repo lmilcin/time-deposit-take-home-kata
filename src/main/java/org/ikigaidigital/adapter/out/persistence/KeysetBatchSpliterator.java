@@ -11,17 +11,22 @@ import java.util.function.ToIntFunction;
  * Lazily fetches consecutive batches using keyset pagination: each batch starts after the last id
  * of the previous one. No database resources are held between batches, so the resulting stream
  * may be consumed outside of a transaction (e.g. while an HTTP response is being written).
+ * Batches are produced in ascending id order; {@code fetchAfterId} must return rows ordered by id.
  */
 final class KeysetBatchSpliterator<T> extends Spliterators.AbstractSpliterator<List<T>> {
 
     private final int batchSize;
     private final IntFunction<List<T>> fetchAfterId;
     private final ToIntFunction<T> idOf;
-    private int lastId = Integer.MIN_VALUE;
+    private int lastId;
     private boolean exhausted;
 
-    KeysetBatchSpliterator(int batchSize, IntFunction<List<T>> fetchAfterId, ToIntFunction<T> idOf) {
+    /**
+     * @param startAfterId the first batch starts after this id (exclusive)
+     */
+    KeysetBatchSpliterator(int startAfterId, int batchSize, IntFunction<List<T>> fetchAfterId, ToIntFunction<T> idOf) {
         super(Long.MAX_VALUE, Spliterator.ORDERED | Spliterator.NONNULL);
+        this.lastId = startAfterId;
         this.batchSize = batchSize;
         this.fetchAfterId = fetchAfterId;
         this.idOf = idOf;

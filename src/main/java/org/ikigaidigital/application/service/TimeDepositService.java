@@ -8,6 +8,7 @@ import org.ikigaidigital.application.port.out.TimeDepositRepository;
 import org.ikigaidigital.domain.TimeDepositDetails;
 
 import java.util.List;
+import java.util.OptionalInt;
 import java.util.stream.Stream;
 
 public class TimeDepositService implements GetTimeDepositsUseCase, CalculateInterestUseCase {
@@ -26,8 +27,8 @@ public class TimeDepositService implements GetTimeDepositsUseCase, CalculateInte
     }
 
     @Override
-    public Stream<TimeDepositDetails> getTimeDeposits() {
-        return repository.findAllWithWithdrawalsInBatches(batchSize).flatMap(List::stream);
+    public Stream<TimeDepositDetails> getTimeDeposits(OptionalInt afterId) {
+        return repository.findAllWithWithdrawalsInBatches(afterId, batchSize).flatMap(List::stream);
     }
 
     /**

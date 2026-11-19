@@ -58,6 +58,20 @@ class TimeDepositApplicationTest {
     }
 
     @Test
+    void returnsTimeDepositsOrderedById() throws Exception {
+        mockMvc.perform(get("/time-deposits"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].id").value(org.hamcrest.Matchers.contains(1, 2, 3, 4, 5, 6)));
+    }
+
+    @Test
+    void resumesFetchingAfterGivenId() throws Exception {
+        mockMvc.perform(get("/time-deposits").param("afterId", "3"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].id").value(org.hamcrest.Matchers.contains(4, 5, 6)));
+    }
+
+    @Test
     void calculatesInterestForAllTimeDepositsLikeTheCalculator() throws Exception {
         List<TimeDeposit> expected = loadTimeDeposits();
         new TimeDepositCalculator().updateBalance(expected);

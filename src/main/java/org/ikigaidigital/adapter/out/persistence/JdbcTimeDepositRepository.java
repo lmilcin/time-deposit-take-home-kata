@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -21,6 +22,7 @@ import java.util.stream.StreamSupport;
 @Repository
 public class JdbcTimeDepositRepository implements TimeDepositRepository {
 
+    /** ORDER BY id is required: keyset pagination and resuming via afterId both depend on it. */
     private static final String SELECT_BATCH = """
             SELECT id, plan_type, balance, days
             FROM time_deposits
@@ -54,14 +56,19 @@ public class JdbcTimeDepositRepository implements TimeDepositRepository {
 
     @Override
     public Stream<List<TimeDeposit>> findAllInBatches(int batchSize) {
-        return StreamSupport.stream(
-                new KeysetBatchSpliterator<>(batchSize, lastId -> fetchBatch(lastId, batchSize), TimeDeposit::getId),
-                false);
+        return batchesAfter(OptionalInt.empty(), batchSize);
     }
 
     @Override
-    public Stream<List<TimeDepositDetails>> findAllWithWithdrawalsInBatches(int batchSize) {
-        return findAllInBatches(batchSize).map(this::withWithdrawals);
+    public Stream<List<TimeDepositDetails>> findAllWithWithdrawalsInBatches(OptionalInt afterId, int batchSize) {
+        return batchesAfter(afterId, batchSize).map(this::withWithdrawals);
+    }
+
+    private Stream<List<TimeDeposit>> batchesAfter(OptionalInt afterId, int batchSize) {
+        int startAfterId = afterId.orElse(Integer.MIN_VALUE);
+        return StreamSupport.stream(
+                new KeysetBatchSpliterator<>(startAfterId, batchSize, lastId -> fetchBatch(lastId, batchSize), TimeDeposit::getId),
+                false);
     }
 
     @Override
@@ -81,7 +88,10 @@ public class JdbcTimeDepositRepository implements TimeDepositRepository {
                 TIME_DEPOSIT_ROW_MAPPER);
     }
 
-    /** Loads withdrawals for the whole batch with a single query to avoid N+1 queries. */
+    /**
+     * Loads withdrawals for the whole batch with a single query to avoid N+1 queries.
+     * Preserves the id order of the given batch.
+     */
     private List<TimeDepositDetails> withWithdrawals(List<TimeDeposit> batch) {
         List<Integer> ids = batch.stream().map(TimeDeposit::getId).toList();
         Map<Integer, List<Withdrawal>> withdrawalsByDepositId = jdbc.query(SELECT_WITHDRAWALS,

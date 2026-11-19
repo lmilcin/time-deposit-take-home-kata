@@ -14,6 +14,7 @@ import java.util.stream.Stream;
  * Response body of {@code GET /time-deposits}, mapped to the {@code TimeDepositList} schema via
  * openapi-generator {@code schemaMappings}. It is serialized as a JSON array element by element while
  * the response is written, so arbitrarily many deposits are never materialized in memory at once.
+ * Elements are written in the order of the underlying stream, which is ordered by id ascending.
  * The underlying stream is closed once serialization completes.
  */
 @JsonSerialize(using = TimeDepositStream.Serializer.class)

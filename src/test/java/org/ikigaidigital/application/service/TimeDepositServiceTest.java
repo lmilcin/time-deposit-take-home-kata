@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.OptionalInt;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -40,8 +41,15 @@ class TimeDepositServiceTest {
 
     @Test
     void getTimeDepositsFlattensAllBatches() {
-        try (Stream<TimeDepositDetails> deposits = service.getTimeDeposits()) {
+        try (Stream<TimeDepositDetails> deposits = service.getTimeDeposits(OptionalInt.empty())) {
             assertThat(deposits.map(details -> details.timeDeposit().getId())).containsExactly(1, 2, 3, 4, 5);
+        }
+    }
+
+    @Test
+    void getTimeDepositsResumesAfterGivenId() {
+        try (Stream<TimeDepositDetails> deposits = service.getTimeDeposits(OptionalInt.of(2))) {
+            assertThat(deposits.map(details -> details.timeDeposit().getId())).containsExactly(3, 4, 5);
         }
     }
 
@@ -73,9 +81,14 @@ class TimeDepositServiceTest {
         }
 
         @Override
-        public Stream<List<TimeDepositDetails>> findAllWithWithdrawalsInBatches(int batchSize) {
+        public Stream<List<TimeDepositDetails>> findAllWithWithdrawalsInBatches(OptionalInt afterId, int batchSize) {
+            int startAfterId = afterId.orElse(Integer.MIN_VALUE);
             return findAllInBatches(batchSize)
-                    .map(batch -> batch.stream().map(td -> new TimeDepositDetails(td, List.of())).toList());
+                    .map(batch -> batch.stream()
+                            .filter(td -> td.getId() > startAfterId)
+                            .map(td -> new TimeDepositDetails(td, List.of()))
+                            .toList())
+                    .filter(batch -> !batch.isEmpty());
         }
 
         @Override

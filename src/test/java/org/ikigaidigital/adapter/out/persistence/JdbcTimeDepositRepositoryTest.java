@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Import;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.OptionalInt;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -54,7 +55,7 @@ class JdbcTimeDepositRepositoryTest {
 
     @Test
     void fetchesWithdrawalsForEachTimeDeposit() {
-        try (Stream<List<TimeDepositDetails>> batches = repository.findAllWithWithdrawalsInBatches(2)) {
+        try (Stream<List<TimeDepositDetails>> batches = repository.findAllWithWithdrawalsInBatches(OptionalInt.empty(), 2)) {
             List<TimeDepositDetails> all = batches.flatMap(List::stream).toList();
 
             assertThat(all).hasSize(6);
@@ -63,6 +64,21 @@ class JdbcTimeDepositRepositoryTest {
                     new Withdrawal(2, new BigDecimal("250.00"), LocalDate.of(2026, 10, 1)),
                     new Withdrawal(3, new BigDecimal("100.00"), LocalDate.of(2026, 10, 20)));
             assertThat(withdrawalsOf(all, 6)).extracting(Withdrawal::id).containsExactly(4);
+        }
+    }
+
+    @Test
+    void resumesFetchingAfterGivenIdInIdOrderAcrossBatches() {
+        try (Stream<List<TimeDepositDetails>> batches = repository.findAllWithWithdrawalsInBatches(OptionalInt.of(1), 2)) {
+            assertThat(batches.map(batch -> batch.stream().map(details -> details.timeDeposit().getId()).toList()))
+                    .containsExactly(List.of(2, 3), List.of(4, 5), List.of(6));
+        }
+    }
+
+    @Test
+    void returnsNothingWhenResumingAfterLastId() {
+        try (Stream<List<TimeDepositDetails>> batches = repository.findAllWithWithdrawalsInBatches(OptionalInt.of(6), 2)) {
+            assertThat(batches).isEmpty();
         }
     }
 

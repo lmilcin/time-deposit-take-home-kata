@@ -6,6 +6,8 @@ import org.ikigaidigital.application.port.in.GetTimeDepositsUseCase;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
+import java.util.OptionalInt;
+
 /** Implementation of the delegate generated from openapi.yaml. */
 @Component
 public class TimeDepositsApiDelegateImpl implements TimeDepositsApiDelegate {
@@ -23,8 +25,9 @@ public class TimeDepositsApiDelegateImpl implements TimeDepositsApiDelegate {
     }
 
     @Override
-    public ResponseEntity<TimeDepositStream> getTimeDeposits() {
-        return ResponseEntity.ok(new TimeDepositStream(getTimeDeposits.getTimeDeposits().map(mapper::toApi)));
+    public ResponseEntity<TimeDepositStream> getTimeDeposits(Integer afterId) {
+        OptionalInt resumeAfter = afterId == null ? OptionalInt.empty() : OptionalInt.of(afterId);
+        return ResponseEntity.ok(new TimeDepositStream(getTimeDeposits.getTimeDeposits(resumeAfter).map(mapper::toApi)));
     }
 
     @Override
