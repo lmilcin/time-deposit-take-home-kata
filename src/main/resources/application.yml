@@ -13,3 +13,7 @@ springdoc:
   swagger-ui:
     # Swagger UI renders the hand-written contract served as a static resource.
     url: /openapi.yaml
+
+time-deposits:
+  # Number of time deposits fetched and updated per database round trip.
+  batch-size: 1000
