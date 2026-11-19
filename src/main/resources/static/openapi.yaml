@@ -39,13 +39,32 @@ paths:
     post:
       tags: [TimeDeposits]
       operationId: calculateInterest
-      summary: Apply monthly interest to the balances of all time deposits
+      summary: Run the daily interest batch for an accounting date
       description: >-
-        Applies interest to the balance of every time deposit based on its current `days`,
-        then advances `days` of every time deposit by one.
+        Intended to run once per accounting date (daily), since time deposits are made on different
+        days of the month. Monthly interest is calculated individually for each time deposit as
+        defined by its plan: interest is not accrued for the first 30 days (basic, student) or
+        45 days (premium), and is then due every calendar month on the monthly anniversary of the
+        accrual start. For each deposit where it is due, interest is applied and the accounting date
+        is recorded as the date interest was last applied. Afterwards `days` of every time deposit
+        advances by one. The process fails if any time deposit has an unknown plan type.
+      parameters:
+        - name: accounting_date
+          in: query
+          required: true
+          description: >-
+            Accounting date the batch is executed for. It may differ from the current calendar date,
+            e.g. when the batch runs after midnight, in a different time zone or is delayed by an outage.
+          schema:
+            type: string
+            format: date
       responses:
         '204':
-          description: Balances and days of all time deposits were updated
+          description: Interest batch completed for the accounting date
+        '400':
+          description: accounting_date is missing or not a valid date
+        '500':
+          description: Interest batch failed, e.g. a time deposit has an unknown plan type
 components:
   schemas:
     TimeDepositList:

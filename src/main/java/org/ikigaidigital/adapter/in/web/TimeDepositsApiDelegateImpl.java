@@ -6,6 +6,7 @@ import org.ikigaidigital.application.port.in.GetTimeDepositsUseCase;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.util.OptionalInt;
 
 /** Implementation of the delegate generated from openapi.yaml. */
@@ -31,8 +32,8 @@ public class TimeDepositsApiDelegateImpl implements TimeDepositsApiDelegate {
     }
 
     @Override
-    public ResponseEntity<Void> calculateInterest() {
-        calculateInterest.calculateInterest();
+    public ResponseEntity<Void> calculateInterest(LocalDate accountingDate) {
+        calculateInterest.calculateInterest(accountingDate);
         return ResponseEntity.noContent().build();
     }
 }
