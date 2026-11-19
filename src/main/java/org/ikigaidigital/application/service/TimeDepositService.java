@@ -32,6 +32,9 @@ public class TimeDepositService implements GetTimeDepositsUseCase, CalculateInte
     }
 
     /**
+     * Applies {@link TimeDepositCalculator#updateBalance} to each batch and then advances {@code days}
+     * by one for every deposit that passed through it, since each execution accounts for one day.
+     * Interest is therefore calculated using {@code days} as it was before the run.
      * Each batch is calculated and persisted independently. Recovery from an interrupted run
      * (some batches already updated) is not handled yet.
      */
@@ -40,8 +43,14 @@ public class TimeDepositService implements GetTimeDepositsUseCase, CalculateInte
         try (Stream<List<TimeDeposit>> batches = repository.findAllInBatches(batchSize)) {
             batches.forEach(batch -> {
                 calculator.updateBalance(batch);
-                repository.updateBalances(batch);
+                repository.updateBalancesAndDays(batch.stream().map(TimeDepositService::advanceOneDay).toList());
             });
         }
+    }
+
+    /** {@link TimeDeposit} has no setter for days and must not be changed, so a new instance is created. */
+    private static TimeDeposit advanceOneDay(TimeDeposit timeDeposit) {
+        return new TimeDeposit(timeDeposit.getId(), timeDeposit.getPlanType(), timeDeposit.getBalance(),
+                timeDeposit.getDays() + 1);
     }
 }

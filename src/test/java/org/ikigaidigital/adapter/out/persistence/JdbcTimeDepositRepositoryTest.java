@@ -83,15 +83,17 @@ class JdbcTimeDepositRepositoryTest {
     }
 
     @Test
-    void updatesBalances() {
-        repository.updateBalances(List.of(
-                new TimeDeposit(2, "basic", 25020.83, 60),
-                new TimeDeposit(6, "premium", 100416.67, 90)));
+    void updatesBalancesAndDays() {
+        repository.updateBalancesAndDays(List.of(
+                new TimeDeposit(2, "basic", 25020.83, 61),
+                new TimeDeposit(6, "premium", 100416.67, 91)));
 
         try (Stream<List<TimeDeposit>> batches = repository.findAllInBatches(10)) {
-            assertThat(batches.flatMap(List::stream))
-                    .extracting(TimeDeposit::getBalance)
+            List<TimeDeposit> all = batches.flatMap(List::stream).toList();
+            assertThat(all).extracting(TimeDeposit::getBalance)
                     .containsExactly(10000.00, 25020.83, 5000.00, 7500.00, 50000.00, 100416.67);
+            assertThat(all).extracting(TimeDeposit::getDays)
+                    .containsExactly(15, 61, 120, 400, 40, 91);
         }
     }
 

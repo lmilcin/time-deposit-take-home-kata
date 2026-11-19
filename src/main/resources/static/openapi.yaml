@@ -41,9 +41,12 @@ paths:
       tags: [TimeDeposits]
       operationId: calculateInterest
       summary: Apply monthly interest to the balances of all time deposits
+      description: >-
+        Applies interest to the balance of every time deposit based on its current `days`,
+        then advances `days` of every time deposit by one.
       responses:
         '204':
-          description: Balances of all time deposits were updated
+          description: Balances and days of all time deposits were updated
 components:
   schemas:
     TimeDepositList:

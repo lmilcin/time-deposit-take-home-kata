@@ -7,6 +7,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -71,16 +72,23 @@ class TimeDepositApplicationTest {
                 .andExpect(jsonPath("$[*].id").value(org.hamcrest.Matchers.contains(4, 5, 6)));
     }
 
+    /** Rolled back so that the modified balances and days do not leak into other tests. */
     @Test
-    void calculatesInterestForAllTimeDepositsLikeTheCalculator() throws Exception {
+    @Transactional
+    void calculatesInterestForAllTimeDepositsLikeTheCalculatorAndAdvancesDays() throws Exception {
+        List<TimeDeposit> before = loadTimeDeposits();
         List<TimeDeposit> expected = loadTimeDeposits();
         new TimeDepositCalculator().updateBalance(expected);
 
         mockMvc.perform(post("/time-deposits/calculate-interest")).andExpect(status().isNoContent());
 
-        assertThat(loadTimeDeposits())
+        List<TimeDeposit> after = loadTimeDeposits();
+        assertThat(after)
                 .extracting(TimeDeposit::getBalance)
                 .containsExactlyElementsOf(expected.stream().map(TimeDeposit::getBalance).toList());
+        assertThat(after)
+                .extracting(TimeDeposit::getDays)
+                .containsExactlyElementsOf(before.stream().map(td -> td.getDays() + 1).toList());
     }
 
     private List<TimeDeposit> loadTimeDeposits() {

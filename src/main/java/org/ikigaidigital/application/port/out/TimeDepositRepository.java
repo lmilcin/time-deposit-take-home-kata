@@ -26,6 +26,6 @@ public interface TimeDepositRepository {
      */
     Stream<List<TimeDepositDetails>> findAllWithWithdrawalsInBatches(OptionalInt afterId, int batchSize);
 
-    /** Persists the balances of the given time deposits as a single batch. */
-    void updateBalances(List<TimeDeposit> timeDeposits);
+    /** Persists the balances and days of the given time deposits as a single batch. */
+    void updateBalancesAndDays(List<TimeDeposit> timeDeposits);
 }

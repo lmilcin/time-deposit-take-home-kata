@@ -40,6 +40,31 @@ class TimeDepositServiceTest {
     }
 
     @Test
+    void calculateInterestAdvancesDaysByOneAfterCalculatingInterest() {
+        List<TimeDeposit> before = repository.copyOfAll();
+        List<TimeDeposit> expected = repository.copyOfAll();
+        new TimeDepositCalculator().updateBalance(expected);
+
+        service.calculateInterest();
+
+        List<TimeDeposit> after = repository.copyOfAll();
+        assertThat(after).extracting(TimeDeposit::getDays)
+                .containsExactlyElementsOf(before.stream().map(td -> td.getDays() + 1).toList());
+        assertThat(after).extracting(TimeDeposit::getBalance)
+                .containsExactlyElementsOf(expected.stream().map(TimeDeposit::getBalance).toList());
+    }
+
+    @Test
+    void calculateInterestUsesDaysBeforeIncrement() {
+        InMemoryRepository boundary = new InMemoryRepository(List.of(new TimeDeposit(1, "basic", 1200.00, 30)));
+        new TimeDepositService(boundary, new TimeDepositCalculator(), 2).calculateInterest();
+
+        TimeDeposit after = boundary.copyOfAll().get(0);
+        assertThat(after.getBalance()).isEqualTo(1200.00);
+        assertThat(after.getDays()).isEqualTo(31);
+    }
+
+    @Test
     void getTimeDepositsFlattensAllBatches() {
         try (Stream<TimeDepositDetails> deposits = service.getTimeDeposits(OptionalInt.empty())) {
             assertThat(deposits.map(details -> details.timeDeposit().getId())).containsExactly(1, 2, 3, 4, 5);
@@ -92,7 +117,7 @@ class TimeDepositServiceTest {
         }
 
         @Override
-        public void updateBalances(List<TimeDeposit> timeDeposits) {
+        public void updateBalancesAndDays(List<TimeDeposit> timeDeposits) {
             updatedBatchSizes.add(timeDeposits.size());
             timeDeposits.forEach(updated -> store.replaceAll(td -> td.getId() == updated.getId() ? copy(updated) : td));
         }

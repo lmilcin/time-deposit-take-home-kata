@@ -38,8 +38,8 @@ public class JdbcTimeDepositRepository implements TimeDepositRepository {
             ORDER BY date, id
             """;
 
-    private static final String UPDATE_BALANCE = """
-            UPDATE time_deposits SET balance = :balance WHERE id = :id
+    private static final String UPDATE_BALANCE_AND_DAYS = """
+            UPDATE time_deposits SET balance = :balance, days = :days WHERE id = :id
             """;
 
     private static final RowMapper<TimeDeposit> TIME_DEPOSIT_ROW_MAPPER = (rs, rowNum) -> new TimeDeposit(
@@ -73,13 +73,14 @@ public class JdbcTimeDepositRepository implements TimeDepositRepository {
 
     @Override
     @Transactional
-    public void updateBalances(List<TimeDeposit> timeDeposits) {
+    public void updateBalancesAndDays(List<TimeDeposit> timeDeposits) {
         SqlParameterSource[] parameters = timeDeposits.stream()
                 .map(timeDeposit -> new MapSqlParameterSource()
                         .addValue("id", timeDeposit.getId())
-                        .addValue("balance", BigDecimal.valueOf(timeDeposit.getBalance())))
+                        .addValue("balance", BigDecimal.valueOf(timeDeposit.getBalance()))
+                        .addValue("days", timeDeposit.getDays()))
                 .toArray(SqlParameterSource[]::new);
-        jdbc.batchUpdate(UPDATE_BALANCE, parameters);
+        jdbc.batchUpdate(UPDATE_BALANCE_AND_DAYS, parameters);
     }
 
     private List<TimeDeposit> fetchBatch(int lastId, int batchSize) {
