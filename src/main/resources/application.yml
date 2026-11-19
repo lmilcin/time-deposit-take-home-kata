@@ -9,6 +9,13 @@ spring:
   flyway:
     locations: classpath:db/migration
 
+server:
+  # GET /time-deposits can return very large, highly compressible JSON; compression is applied
+  # on the fly while the response is streamed.
+  compression:
+    enabled: true
+    mime-types: application/json
+
 springdoc:
   swagger-ui:
     # Swagger UI renders the hand-written contract served as a static resource.
