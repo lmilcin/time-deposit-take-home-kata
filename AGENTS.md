@@ -11,4 +11,8 @@
 * Do not set `springdoc.api-docs.enabled=false`; it also disables Swagger UI. Swagger UI is pointed at `/openapi.yaml`.
 * Database tables and columns use snake_case (e.g. `time_deposits.plan_type`); schema changes go in new Flyway migrations under `src/main/resources/db/migration`.
 * Name test classes `*Test` so surefire runs them (failsafe is not configured).
+* Hexagonal layout: `domain` and `application` (ports + `TimeDepositService`) are framework-free and wired in `config/ApplicationConfiguration`; adapters live in `adapter/in/web` and `adapter/out/persistence`. The shared `TimeDeposit` and `TimeDepositCalculator` stay unchanged in `org.ikigaidigital`.
+* Large result sets: the repository fetches lazily with keyset pagination (`id > :lastId ORDER BY id LIMIT :batchSize`), holding no connection between batches, so streams can be consumed while the HTTP response is written. Batch size is `time-deposits.batch-size`.
+* The GET response schema `TimeDepositList` is mapped via `schemaMappings` to `TimeDepositStream`, which serializes lazily. Keep the mapping when changing the contract.
+* Interest calculation persists each batch independently; recovery from an interrupted run is not handled yet. GET is not required to be consistent with a concurrent calculation.
 * The app requires `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`. Locally they come from `.env` via Docker Compose; tests get them from Testcontainers (`@ServiceConnection`).

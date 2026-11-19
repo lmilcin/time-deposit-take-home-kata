@@ -63,8 +63,8 @@ curl http://localhost:8080/time-deposits
 curl -X POST -i http://localhost:8080/time-deposits/calculate-interest
 ```
 
-> **Note:** the endpoints are currently scaffold stubs — `GET` returns an empty list and
-> `POST` performs no update — until the domain logic is wired in.
+`GET /time-deposits` streams the response, so it works for any number of deposits. Results
+are not guaranteed to be consistent while interest is being calculated concurrently.
 
 ## Stop and reset
 
