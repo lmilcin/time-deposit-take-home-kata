@@ -19,3 +19,5 @@
 * Interest calculation persists each batch independently; recovery from an interrupted run is not handled yet. GET is not required to be consistent with a concurrent calculation.
 * The app requires `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`. Locally they come from `.env` via Docker Compose; tests get them from Testcontainers (`@ServiceConnection`).
 * `time_deposits.days` is the number of days the deposit has existed, counting the day it was made (starting at 1). This matches the calculator's thresholds (`> 30`, `> 45`, `< 366`) against the README rules.
+* Every pass through `TimeDepositCalculator.updateBalance` advances `days` by exactly one. This is done in `TimeDepositService` after the calculation (interest uses the pre-increment `days`), never in the calculator, whose behavior must stay unchanged.
+* Tests that call `POST /time-deposits/calculate-interest` through MockMvc must be `@Transactional` so the updated balances and days roll back and do not affect other tests sharing the container.

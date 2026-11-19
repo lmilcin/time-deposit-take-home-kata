@@ -52,7 +52,7 @@ This file documents:
    * `GET /time-deposits` — returns all time deposits with their withdrawals, ordered by `id`
      ascending. Set the optional `afterId` parameter to fetch only deposits with a greater `id`.
    * `POST /time-deposits/calculate-interest` — applies monthly interest to the balances
-     of all time deposits; returns `204 No Content`.
+     of all time deposits, then advances each deposit's `days` by one; returns `204 No Content`.
 
 The OpenAPI contract that Swagger UI renders is available at
 <http://localhost:8080/openapi.yaml>.
