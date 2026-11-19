@@ -4,27 +4,25 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Testcontainers
+@Import(TestcontainersConfiguration.class)
 class TimeDepositApplicationTest {
-
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");
 
     @Autowired
     MockMvc mockMvc;
@@ -33,16 +31,10 @@ class TimeDepositApplicationTest {
     JdbcTemplate jdbcTemplate;
 
     @Test
-    void appliesFlywayMigrationsWithSeedData() {
-        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM time_deposits", Integer.class)).isPositive();
-        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM withdrawals", Integer.class)).isPositive();
-    }
-
-    @Test
     void servesOpenApiContract() throws Exception {
         mockMvc.perform(get("/openapi.yaml"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("/time-deposits/calculate-interest")));
+                .andExpect(content().string(containsString("/time-deposits/calculate-interest")));
     }
 
     @Test
@@ -51,8 +43,35 @@ class TimeDepositApplicationTest {
     }
 
     @Test
-    void exposesGeneratedEndpoints() throws Exception {
-        mockMvc.perform(get("/time-deposits")).andExpect(status().isOk());
+    void returnsAllTimeDepositsWithWithdrawals() throws Exception {
+        mockMvc.perform(get("/time-deposits"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(6)))
+                .andExpect(jsonPath("$[0].id").value(1))
+                .andExpect(jsonPath("$[0].planType").value("basic"))
+                .andExpect(jsonPath("$[0].days").value(15))
+                .andExpect(jsonPath("$[0].balance").isNumber())
+                .andExpect(jsonPath("$[0].withdrawals", hasSize(0)))
+                .andExpect(jsonPath("$[2].withdrawals", hasSize(2)))
+                .andExpect(jsonPath("$[2].withdrawals[0].amount").value(250.00))
+                .andExpect(jsonPath("$[2].withdrawals[0].date").value("2026-10-01"));
+    }
+
+    @Test
+    void calculatesInterestForAllTimeDepositsLikeTheCalculator() throws Exception {
+        List<TimeDeposit> expected = loadTimeDeposits();
+        new TimeDepositCalculator().updateBalance(expected);
+
         mockMvc.perform(post("/time-deposits/calculate-interest")).andExpect(status().isNoContent());
+
+        assertThat(loadTimeDeposits())
+                .extracting(TimeDeposit::getBalance)
+                .containsExactlyElementsOf(expected.stream().map(TimeDeposit::getBalance).toList());
+    }
+
+    private List<TimeDeposit> loadTimeDeposits() {
+        return jdbcTemplate.query("SELECT id, plan_type, balance, days FROM time_deposits ORDER BY id",
+                (rs, rowNum) -> new TimeDeposit(rs.getInt("id"), rs.getString("plan_type"),
+                        rs.getBigDecimal("balance").doubleValue(), rs.getInt("days")));
     }
 }

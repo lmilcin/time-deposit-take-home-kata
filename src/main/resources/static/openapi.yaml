@@ -20,9 +20,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/TimeDeposit'
+                $ref: '#/components/schemas/TimeDepositList'
   /time-deposits/calculate-interest:
     post:
       tags: [TimeDeposits]
@@ -33,6 +31,10 @@ paths:
           description: Balances of all time deposits were updated
 components:
   schemas:
+    TimeDepositList:
+      type: array
+      items:
+        $ref: '#/components/schemas/TimeDeposit'
     TimeDeposit:
       type: object
       required: [id, planType, balance, days, withdrawals]

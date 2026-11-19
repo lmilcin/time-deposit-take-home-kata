@@ -98,6 +98,8 @@
                             <modelPackage>org.ikigaidigital.api.model</modelPackage>
                             <!-- ApiUtil is referenced by the generated delegate interfaces -->
                             <supportingFilesToGenerate>ApiUtil.java</supportingFilesToGenerate>
+                            <!-- Streams the GET response instead of materializing a List -->
+                            <schemaMappings>TimeDepositList=org.ikigaidigital.adapter.in.web.TimeDepositStream</schemaMappings>
                             <configOptions>
                                 <!-- Emit packages directly under target/generated-sources/openapi so IntelliJ's
                                      auto-detected generated-sources root matches the Maven compile root -->
