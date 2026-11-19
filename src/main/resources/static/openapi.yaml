@@ -28,7 +28,6 @@ paths:
           schema:
             type: integer
             format: int32
-          example: 3
       responses:
         '200':
           description: Time deposits with their withdrawals, ordered by `id` ascending
