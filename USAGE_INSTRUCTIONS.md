@@ -59,9 +59,12 @@ The OpenAPI contract that Swagger UI renders is available at
 The same calls with `curl`:
 
 ```bash
-curl http://localhost:8080/time-deposits
+curl --compressed http://localhost:8080/time-deposits
 curl -X POST -i http://localhost:8080/time-deposits/calculate-interest
 ```
+
+JSON responses are gzip-compressed when the client sends `Accept-Encoding: gzip`
+(`curl --compressed` does; Swagger UI and browsers do so automatically).
 
 `GET /time-deposits` streams the response, so it works for any number of deposits. Results
 are not guaranteed to be consistent while interest is being calculated concurrently.
