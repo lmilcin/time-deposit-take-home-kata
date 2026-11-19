@@ -49,7 +49,8 @@ This file documents:
 
 1. Open Swagger UI: <http://localhost:8080/swagger-ui/index.html>
 2. Expand an endpoint, click **Try it out**, then **Execute**:
-   * `GET /time-deposits` — returns all time deposits with their withdrawals.
+   * `GET /time-deposits` — returns all time deposits with their withdrawals, ordered by `id`
+     ascending. Set the optional `afterId` parameter to fetch only deposits with a greater `id`.
    * `POST /time-deposits/calculate-interest` — applies monthly interest to the balances
      of all time deposits; returns `204 No Content`.
 
@@ -68,6 +69,13 @@ JSON responses are gzip-compressed when the client sends `Accept-Encoding: gzip`
 
 `GET /time-deposits` streams the response, so it works for any number of deposits. Results
 are not guaranteed to be consistent while interest is being calculated concurrently.
+
+Because results are ordered by `id`, an interrupted fetch can be resumed by passing the `id`
+of the last time deposit received as `afterId` (exclusive):
+
+```bash
+curl --compressed "http://localhost:8080/time-deposits?afterId=3"   # returns deposits with id > 3
+```
 
 ## Stop and reset
 
