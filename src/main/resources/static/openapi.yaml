@@ -67,6 +67,7 @@ components:
           format: double
           example: 1234567.00
         days:
+          description: Number of days the deposit has existed, counting the day it was made (starting at 1).
           type: integer
           format: int32
           example: 45

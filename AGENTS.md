@@ -18,3 +18,4 @@
 * Response compression (`server.compression`) is done by the embedded server, so MockMvc cannot test it; use a `RANDOM_PORT` test (see `ResponseCompressionTest`). The streamed GET response has no Content-Length, so it is compressed regardless of `min-response-size`.
 * Interest calculation persists each batch independently; recovery from an interrupted run is not handled yet. GET is not required to be consistent with a concurrent calculation.
 * The app requires `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`. Locally they come from `.env` via Docker Compose; tests get them from Testcontainers (`@ServiceConnection`).
+* `time_deposits.days` is the number of days the deposit has existed, counting the day it was made (starting at 1). This matches the calculator's thresholds (`> 30`, `> 45`, `< 366`) against the README rules.
