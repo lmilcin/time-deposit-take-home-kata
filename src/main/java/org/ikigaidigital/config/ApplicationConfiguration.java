@@ -1,6 +1,5 @@
 package org.ikigaidigital.config;
 
-import org.ikigaidigital.TimeDepositCalculator;
 import org.ikigaidigital.application.port.out.TimeDepositRepository;
 import org.ikigaidigital.application.service.TimeDepositService;
 import org.ikigaidigital.domain.interest.BasicPlanAccrualStrategy;
@@ -17,11 +16,6 @@ import java.util.List;
 /** Wires the framework-free domain and application layers into the Spring context. */
 @Configuration
 public class ApplicationConfiguration {
-
-    @Bean
-    TimeDepositCalculator timeDepositCalculator() {
-        return new TimeDepositCalculator();
-    }
 
     @Bean
     BasicPlanAccrualStrategy basicPlanAccrualStrategy() {
@@ -46,9 +40,8 @@ public class ApplicationConfiguration {
 
     @Bean
     TimeDepositService timeDepositService(TimeDepositRepository repository,
-                                          TimeDepositCalculator calculator,
                                           InterestAccrualStrategies accrualStrategies,
                                           @Value("${time-deposits.batch-size}") int batchSize) {
-        return new TimeDepositService(repository, calculator, accrualStrategies, batchSize);
+        return new TimeDepositService(repository, accrualStrategies, batchSize);
     }
 }

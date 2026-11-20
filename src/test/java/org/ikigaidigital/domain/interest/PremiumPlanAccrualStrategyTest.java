@@ -1,5 +1,6 @@
 package org.ikigaidigital.domain.interest;
 
+import org.ikigaidigital.TimeDeposit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -47,5 +48,10 @@ class PremiumPlanAccrualStrategyTest {
         LocalDate anniversary = LocalDate.of(2026, 4, 24);
         assertThat(strategy.isDue(state("premium", DEPOSITED, dayBefore, lastApplied), dayBefore)).isFalse();
         assertThat(strategy.isDue(state("premium", DEPOSITED, anniversary, lastApplied), anniversary)).isTrue();
+    }
+
+    @Test
+    void monthlyInterestIsOneTwelfthOfFivePercent() {
+        assertThat(strategy.monthlyInterest(new TimeDeposit(1, "premium", 12000.00, 74))).isEqualTo(50.00);
     }
 }

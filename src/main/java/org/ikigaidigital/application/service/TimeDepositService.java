@@ -5,33 +5,28 @@ import org.ikigaidigital.TimeDepositCalculator;
 import org.ikigaidigital.application.port.in.CalculateInterestUseCase;
 import org.ikigaidigital.application.port.in.GetTimeDepositsUseCase;
 import org.ikigaidigital.application.port.out.TimeDepositRepository;
-import org.ikigaidigital.domain.InterestAccrualState;
+import org.ikigaidigital.domain.AccruingTimeDeposit;
 import org.ikigaidigital.domain.TimeDepositDetails;
 import org.ikigaidigital.domain.interest.InterestAccrualStrategies;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.OptionalInt;
-import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class TimeDepositService implements GetTimeDepositsUseCase, CalculateInterestUseCase {
 
     private final TimeDepositRepository repository;
-    private final TimeDepositCalculator calculator;
     private final InterestAccrualStrategies accrualStrategies;
     private final int batchSize;
 
     public TimeDepositService(TimeDepositRepository repository,
-                              TimeDepositCalculator calculator,
                               InterestAccrualStrategies accrualStrategies,
                               int batchSize) {
         if (batchSize < 1) {
             throw new IllegalArgumentException("batchSize must be positive, was " + batchSize);
         }
         this.repository = repository;
-        this.calculator = calculator;
         this.accrualStrategies = accrualStrategies;
         this.batchSize = batchSize;
     }
@@ -47,37 +42,26 @@ public class TimeDepositService implements GetTimeDepositsUseCase, CalculateInte
      */
     @Override
     public void calculateInterest(LocalDate accountingDate) {
-        try (Stream<List<InterestAccrualState>> batches = repository.findAllForInterestCalculationInBatches(batchSize)) {
-            batches.forEach(batch -> repository.saveInterestCalculation(processBatch(batch, accountingDate)));
+        TimeDepositCalculator calculator = new TimeDepositCalculator(accrualStrategies, accountingDate);
+        try (Stream<List<AccruingTimeDeposit>> batches = repository.findAllForInterestCalculationInBatches(batchSize)) {
+            batches.forEach(batch -> repository.saveInterestCalculation(processBatch(batch, calculator)));
         }
     }
 
     /**
-     * Only deposits whose plan strategy says interest is due pass through
-     * {@link TimeDepositCalculator#updateBalance}; their {@code lastInterestAppliedOn} becomes the accounting
-     * date, even if the calculated interest is zero, as it records when the monthly calculation ran.
-     * Every deposit then advances {@code days} by one, so interest uses {@code days} as it was before the run.
-     * Strategies are resolved for the whole batch first, so an unknown plan type fails the batch before
-     * anything is calculated or persisted.
+     * The whole batch passes through {@link TimeDepositCalculator#updateBalance}, which decides per deposit
+     * whether interest is due and records when it ran. Every deposit then advances {@code days} by one, so
+     * interest uses {@code days} as it was before the run.
      */
-    private List<InterestAccrualState> processBatch(List<InterestAccrualState> batch, LocalDate accountingDate) {
-        List<TimeDeposit> due = batch.stream()
-                .filter(state -> accrualStrategies.isDue(state, accountingDate))
-                .map(InterestAccrualState::timeDeposit)
-                .toList();
-        calculator.updateBalance(due);
-
-        Set<Integer> dueIds = due.stream().map(TimeDeposit::getId).collect(Collectors.toSet());
-        return batch.stream()
-                .map(state -> new InterestAccrualState(
-                        advanceOneDay(state.timeDeposit()),
-                        dueIds.contains(state.timeDeposit().getId()) ? accountingDate : state.lastInterestAppliedOn()))
-                .toList();
+    private static List<AccruingTimeDeposit> processBatch(List<AccruingTimeDeposit> batch,
+                                                          TimeDepositCalculator calculator) {
+        calculator.updateBalance(List.<TimeDeposit>copyOf(batch));
+        return batch.stream().map(TimeDepositService::advanceOneDay).toList();
     }
 
     /** {@link TimeDeposit} has no setter for days and must not be changed, so a new instance is created. */
-    private static TimeDeposit advanceOneDay(TimeDeposit timeDeposit) {
-        return new TimeDeposit(timeDeposit.getId(), timeDeposit.getPlanType(), timeDeposit.getBalance(),
-                timeDeposit.getDays() + 1);
+    private static AccruingTimeDeposit advanceOneDay(AccruingTimeDeposit timeDeposit) {
+        return new AccruingTimeDeposit(timeDeposit.getId(), timeDeposit.getPlanType(), timeDeposit.getBalance(),
+                timeDeposit.getDays() + 1, timeDeposit.getLastInterestAppliedOn());
     }
 }

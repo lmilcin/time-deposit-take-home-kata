@@ -2,7 +2,7 @@ package org.ikigaidigital.adapter.out.persistence;
 
 import org.ikigaidigital.TestcontainersConfiguration;
 import org.ikigaidigital.TimeDeposit;
-import org.ikigaidigital.domain.InterestAccrualState;
+import org.ikigaidigital.domain.AccruingTimeDeposit;
 import org.ikigaidigital.domain.TimeDepositDetails;
 import org.ikigaidigital.domain.Withdrawal;
 import org.junit.jupiter.api.Test;
@@ -30,25 +30,24 @@ class JdbcTimeDepositRepositoryTest {
 
     @Test
     void fetchesAllTimeDepositsInOrderedBatches() {
-        try (Stream<List<InterestAccrualState>> batches = repository.findAllForInterestCalculationInBatches(4)) {
-            assertThat(batches.map(batch -> batch.stream().map(state -> state.timeDeposit().getId()).toList()))
+        try (Stream<List<AccruingTimeDeposit>> batches = repository.findAllForInterestCalculationInBatches(4)) {
+            assertThat(batches.map(batch -> batch.stream().map(TimeDeposit::getId).toList()))
                     .containsExactly(List.of(1, 2, 3, 4), List.of(5, 6));
         }
     }
 
     @Test
     void stopsWhenLastBatchIsExactlyFull() {
-        try (Stream<List<InterestAccrualState>> batches = repository.findAllForInterestCalculationInBatches(3)) {
+        try (Stream<List<AccruingTimeDeposit>> batches = repository.findAllForInterestCalculationInBatches(3)) {
             assertThat(batches.map(List::size)).containsExactly(3, 3);
         }
     }
 
     @Test
     void mapsTimeDepositColumns() {
-        try (Stream<List<InterestAccrualState>> batches = repository.findAllForInterestCalculationInBatches(1)) {
-            InterestAccrualState state = batches.findFirst().orElseThrow().get(0);
-            assertThat(state.lastInterestAppliedOn()).isNull();
-            TimeDeposit first = state.timeDeposit();
+        try (Stream<List<AccruingTimeDeposit>> batches = repository.findAllForInterestCalculationInBatches(1)) {
+            AccruingTimeDeposit first = batches.findFirst().orElseThrow().get(0);
+            assertThat(first.getLastInterestAppliedOn()).isNull();
             assertThat(first.getId()).isEqualTo(1);
             assertThat(first.getPlanType()).isEqualTo("basic");
             assertThat(first.getBalance()).isEqualTo(10000.00);
@@ -89,16 +88,16 @@ class JdbcTimeDepositRepositoryTest {
     void savesBalanceDaysAndLastInterestAppliedOn() {
         LocalDate accountingDate = LocalDate.of(2026, 3, 9);
         repository.saveInterestCalculation(List.of(
-                new InterestAccrualState(new TimeDeposit(2, "basic", 25020.83, 61), accountingDate),
-                new InterestAccrualState(new TimeDeposit(5, "premium", 50000.00, 41), null)));
+                new AccruingTimeDeposit(2, "basic", 25020.83, 61, accountingDate),
+                new AccruingTimeDeposit(5, "premium", 50000.00, 41, null)));
 
-        try (Stream<List<InterestAccrualState>> batches = repository.findAllForInterestCalculationInBatches(10)) {
-            List<InterestAccrualState> all = batches.flatMap(List::stream).toList();
-            assertThat(all).extracting(state -> state.timeDeposit().getBalance())
+        try (Stream<List<AccruingTimeDeposit>> batches = repository.findAllForInterestCalculationInBatches(10)) {
+            List<AccruingTimeDeposit> all = batches.flatMap(List::stream).toList();
+            assertThat(all).extracting(TimeDeposit::getBalance)
                     .containsExactly(10000.00, 25020.83, 5000.00, 7500.00, 50000.00, 100000.00);
-            assertThat(all).extracting(state -> state.timeDeposit().getDays())
+            assertThat(all).extracting(TimeDeposit::getDays)
                     .containsExactly(15, 61, 120, 400, 41, 90);
-            assertThat(all).extracting(InterestAccrualState::lastInterestAppliedOn)
+            assertThat(all).extracting(AccruingTimeDeposit::getLastInterestAppliedOn)
                     .containsExactly(null, accountingDate, null, null, null, null);
         }
     }

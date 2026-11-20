@@ -90,8 +90,6 @@ class TimeDepositApplicationTest {
     @Transactional
     void calculatesMonthlyInterestForDueDepositsAndAdvancesDaysOfAll() throws Exception {
         List<TimeDeposit> before = loadTimeDeposits();
-        List<TimeDeposit> expected = loadTimeDeposits();
-        new TimeDepositCalculator().updateBalance(expected.stream().filter(td -> DUE_IDS.contains(td.getId())).toList());
 
         mockMvc.perform(post("/time-deposits/calculate-interest").param("accounting_date", "2026-03-09"))
                 .andExpect(status().isNoContent());
@@ -99,7 +97,6 @@ class TimeDepositApplicationTest {
         List<TimeDeposit> after = loadTimeDeposits();
         assertThat(after)
                 .extracting(TimeDeposit::getBalance)
-                .containsExactlyElementsOf(expected.stream().map(TimeDeposit::getBalance).toList())
                 .containsExactly(10000.00, 25020.83, 5012.50, 7500.00, 50000.00, 100416.67);
         assertThat(after)
                 .extracting(TimeDeposit::getDays)
@@ -121,8 +118,6 @@ class TimeDepositApplicationTest {
 
         assertThat(loadTimeDeposits()).usingRecursiveFieldByFieldElementComparator().isEqualTo(before);
     }
-
-    private static final List<Integer> DUE_IDS = List.of(2, 3, 4, 6);
 
     private List<TimeDeposit> loadTimeDeposits() {
         return jdbcTemplate.query("SELECT id, plan_type, balance, days FROM time_deposits ORDER BY id",

@@ -1,6 +1,6 @@
 package org.ikigaidigital.domain.interest;
 
-import org.ikigaidigital.domain.InterestAccrualState;
+import org.ikigaidigital.domain.AccruingTimeDeposit;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -26,12 +26,12 @@ final class MonthlyAccrualSchedule {
     private MonthlyAccrualSchedule() {
     }
 
-    static boolean isDue(InterestAccrualState state, LocalDate accountingDate, int waitingDays) {
-        LocalDate depositDate = accountingDate.minusDays(state.timeDeposit().getDays() - 1L);
+    static boolean isDue(AccruingTimeDeposit timeDeposit, LocalDate accountingDate, int waitingDays) {
+        LocalDate depositDate = accountingDate.minusDays(timeDeposit.getDays() - 1L);
         LocalDate accrualStart = depositDate.plusDays(waitingDays);
         Optional<LocalDate> latestAnniversary = latestAnniversaryOnOrBefore(accrualStart, accountingDate);
         return latestAnniversary.isPresent()
-                && state.lastInterestApplied().map(latestAnniversary.get()::isAfter).orElse(true);
+                && timeDeposit.lastInterestApplied().map(latestAnniversary.get()::isAfter).orElse(true);
     }
 
     private static Optional<LocalDate> latestAnniversaryOnOrBefore(LocalDate accrualStart, LocalDate date) {

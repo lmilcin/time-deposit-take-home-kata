@@ -1,15 +1,18 @@
 package org.ikigaidigital.domain.interest;
 
-import org.ikigaidigital.domain.InterestAccrualState;
+import org.ikigaidigital.TimeDeposit;
+import org.ikigaidigital.domain.AccruingTimeDeposit;
 
 import java.time.LocalDate;
 
-/** Premium plan: interest is not accrued for the first 45 days, then it is due every calendar month. */
+/** Premium plan: 5% a year, paid monthly; no accrual for the first 45 days, then due every calendar month. */
 public final class PremiumPlanAccrualStrategy implements InterestAccrualStrategy {
 
     public static final String PLAN_TYPE = "premium";
 
     private static final int WAITING_DAYS = 45;
+
+    private static final double ANNUAL_RATE = 0.05;
 
     @Override
     public String planType() {
@@ -17,7 +20,12 @@ public final class PremiumPlanAccrualStrategy implements InterestAccrualStrategy
     }
 
     @Override
-    public boolean isDue(InterestAccrualState state, LocalDate accountingDate) {
-        return MonthlyAccrualSchedule.isDue(state, accountingDate, WAITING_DAYS);
+    public boolean isDue(AccruingTimeDeposit timeDeposit, LocalDate accountingDate) {
+        return MonthlyAccrualSchedule.isDue(timeDeposit, accountingDate, WAITING_DAYS);
+    }
+
+    @Override
+    public double monthlyInterest(TimeDeposit timeDeposit) {
+        return timeDeposit.getBalance() * ANNUAL_RATE / 12;
     }
 }

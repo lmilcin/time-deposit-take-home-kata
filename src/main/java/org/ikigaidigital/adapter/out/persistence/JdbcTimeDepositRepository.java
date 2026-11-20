@@ -2,7 +2,7 @@ package org.ikigaidigital.adapter.out.persistence;
 
 import org.ikigaidigital.TimeDeposit;
 import org.ikigaidigital.application.port.out.TimeDepositRepository;
-import org.ikigaidigital.domain.InterestAccrualState;
+import org.ikigaidigital.domain.AccruingTimeDeposit;
 import org.ikigaidigital.domain.TimeDepositDetails;
 import org.ikigaidigital.domain.Withdrawal;
 import org.springframework.jdbc.core.RowMapper;
@@ -47,14 +47,13 @@ public class JdbcTimeDepositRepository implements TimeDepositRepository {
             WHERE id = :id
             """;
 
-    private static final RowMapper<InterestAccrualState> STATE_ROW_MAPPER = (rs, rowNum) -> {
+    private static final RowMapper<AccruingTimeDeposit> TIME_DEPOSIT_ROW_MAPPER = (rs, rowNum) -> {
         Date lastInterestAppliedOn = rs.getDate("last_interest_applied_on");
-        return new InterestAccrualState(
-                new TimeDeposit(
-                        rs.getInt("id"),
-                        rs.getString("plan_type"),
-                        rs.getBigDecimal("balance").doubleValue(),
-                        rs.getInt("days")),
+        return new AccruingTimeDeposit(
+                rs.getInt("id"),
+                rs.getString("plan_type"),
+                rs.getBigDecimal("balance").doubleValue(),
+                rs.getInt("days"),
                 lastInterestAppliedOn == null ? null : lastInterestAppliedOn.toLocalDate());
     };
 
@@ -65,49 +64,47 @@ public class JdbcTimeDepositRepository implements TimeDepositRepository {
     }
 
     @Override
-    public Stream<List<InterestAccrualState>> findAllForInterestCalculationInBatches(int batchSize) {
+    public Stream<List<AccruingTimeDeposit>> findAllForInterestCalculationInBatches(int batchSize) {
         return batchesAfter(OptionalInt.empty(), batchSize);
     }
 
     @Override
     public Stream<List<TimeDepositDetails>> findAllWithWithdrawalsInBatches(OptionalInt afterId, int batchSize) {
-        return batchesAfter(afterId, batchSize)
-                .map(batch -> batch.stream().map(InterestAccrualState::timeDeposit).toList())
-                .map(this::withWithdrawals);
+        return batchesAfter(afterId, batchSize).map(this::withWithdrawals);
     }
 
-    private Stream<List<InterestAccrualState>> batchesAfter(OptionalInt afterId, int batchSize) {
+    private Stream<List<AccruingTimeDeposit>> batchesAfter(OptionalInt afterId, int batchSize) {
         int startAfterId = afterId.orElse(Integer.MIN_VALUE);
         return StreamSupport.stream(
                 new KeysetBatchSpliterator<>(startAfterId, batchSize, lastId -> fetchBatch(lastId, batchSize),
-                        state -> state.timeDeposit().getId()),
+                        TimeDeposit::getId),
                 false);
     }
 
     @Override
     @Transactional
-    public void saveInterestCalculation(List<InterestAccrualState> states) {
-        SqlParameterSource[] parameters = states.stream()
-                .map(state -> new MapSqlParameterSource()
-                        .addValue("id", state.timeDeposit().getId())
-                        .addValue("balance", BigDecimal.valueOf(state.timeDeposit().getBalance()))
-                        .addValue("days", state.timeDeposit().getDays())
-                        .addValue("lastInterestAppliedOn", state.lastInterestAppliedOn(), Types.DATE))
+    public void saveInterestCalculation(List<AccruingTimeDeposit> timeDeposits) {
+        SqlParameterSource[] parameters = timeDeposits.stream()
+                .map(timeDeposit -> new MapSqlParameterSource()
+                        .addValue("id", timeDeposit.getId())
+                        .addValue("balance", BigDecimal.valueOf(timeDeposit.getBalance()))
+                        .addValue("days", timeDeposit.getDays())
+                        .addValue("lastInterestAppliedOn", timeDeposit.getLastInterestAppliedOn(), Types.DATE))
                 .toArray(SqlParameterSource[]::new);
         jdbc.batchUpdate(UPDATE_INTEREST_CALCULATION, parameters);
     }
 
-    private List<InterestAccrualState> fetchBatch(int lastId, int batchSize) {
+    private List<AccruingTimeDeposit> fetchBatch(int lastId, int batchSize) {
         return jdbc.query(SELECT_BATCH,
                 new MapSqlParameterSource().addValue("lastId", lastId).addValue("batchSize", batchSize),
-                STATE_ROW_MAPPER);
+                TIME_DEPOSIT_ROW_MAPPER);
     }
 
     /**
      * Loads withdrawals for the whole batch with a single query to avoid N+1 queries.
      * Preserves the id order of the given batch.
      */
-    private List<TimeDepositDetails> withWithdrawals(List<TimeDeposit> batch) {
+    private List<TimeDepositDetails> withWithdrawals(List<? extends TimeDeposit> batch) {
         List<Integer> ids = batch.stream().map(TimeDeposit::getId).toList();
         Map<Integer, List<Withdrawal>> withdrawalsByDepositId = jdbc.query(SELECT_WITHDRAWALS,
                         new MapSqlParameterSource("timeDepositIds", ids),

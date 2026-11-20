@@ -1,8 +1,7 @@
 package org.ikigaidigital.domain.interest;
 
-import org.ikigaidigital.domain.InterestAccrualState;
+import org.ikigaidigital.TimeDeposit;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -25,17 +24,16 @@ public class InterestAccrualStrategies {
     }
 
     /**
-     * Unknown plan types fail the process instead of being skipped. This intentionally deviates from
-     * {@code TimeDepositCalculator.updateBalance}, which silently applies no interest to them.
+     * Unknown plan types fail the process instead of being skipped. This intentionally deviates from the
+     * original {@code TimeDepositCalculator.updateBalance}, which silently applied no interest to them.
      *
      * @throws UnknownPlanTypeException if no strategy is defined for the deposit's plan type
      */
-    public boolean isDue(InterestAccrualState state, LocalDate accountingDate) {
-        String planType = state.timeDeposit().getPlanType();
-        InterestAccrualStrategy strategy = byPlanType.get(planType);
+    public InterestAccrualStrategy strategyFor(TimeDeposit timeDeposit) {
+        InterestAccrualStrategy strategy = byPlanType.get(timeDeposit.getPlanType());
         if (strategy == null) {
-            throw new UnknownPlanTypeException(planType, state.timeDeposit().getId());
+            throw new UnknownPlanTypeException(timeDeposit.getPlanType(), timeDeposit.getId());
         }
-        return strategy.isDue(state, accountingDate);
+        return strategy;
     }
 }

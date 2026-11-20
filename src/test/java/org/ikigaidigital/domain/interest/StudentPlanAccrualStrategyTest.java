@@ -1,5 +1,6 @@
 package org.ikigaidigital.domain.interest;
 
+import org.ikigaidigital.TimeDeposit;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
@@ -37,11 +38,21 @@ class StudentPlanAccrualStrategyTest {
         assertThat(strategy.isDue(state("student", DEPOSITED, date, date), date)).isFalse();
     }
 
-    /** The one-year cut-off is applied by TimeDepositCalculator, so the monthly calculation still runs. */
+    /** The one-year cut-off only affects the amount (see below), so the monthly calculation still runs. */
     @Test
     void stillDueMonthlyAfterOneYear() {
         LocalDate deposited = LocalDate.of(2025, 1, 10);
         LocalDate date = LocalDate.of(2026, 3, 9);
         assertThat(strategy.isDue(state("student", deposited, date, LocalDate.of(2026, 2, 9)), date)).isTrue();
+    }
+
+    @Test
+    void monthlyInterestIsOneTwelfthOfThreePercentDuringTheFirstYear() {
+        assertThat(strategy.monthlyInterest(new TimeDeposit(1, "student", 12000.00, 365))).isEqualTo(30.00);
+    }
+
+    @Test
+    void noInterestOnceTheDepositIsAYearOld() {
+        assertThat(strategy.monthlyInterest(new TimeDeposit(1, "student", 12000.00, 366))).isZero();
     }
 }
