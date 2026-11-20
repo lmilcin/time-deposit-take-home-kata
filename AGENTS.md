@@ -30,3 +30,4 @@
 * Tests that call `POST /time-deposits/calculate-interest` through MockMvc must be `@Transactional` so modified rows roll back and do not affect other tests sharing the container.
 * Lombok is run through `maven-compiler-plugin` `annotationProcessorPaths`: since JDK 23 javac does not discover processors on the classpath, so without it Lombok silently does nothing on newer JDKs. Any new annotation processor must be added there too. Do not use Lombok on `TimeDeposit` or change the `updateBalance` signature.
 * Logging uses the SLF4J API (`slf4j-api`, backed by Spring Boot's Logback); do not log through Logback directly.
+* Tests whose expectations depend on batching must pin `time-deposits.batch-size` themselves (e.g. `@SpringBootTest(properties = ...)`), not rely on `application.yml`. The batch size is read once per Spring context, so it cannot differ between methods of one test class.

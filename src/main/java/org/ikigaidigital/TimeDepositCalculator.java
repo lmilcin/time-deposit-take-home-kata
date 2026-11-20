@@ -1,5 +1,6 @@
 package org.ikigaidigital;
 
+import lombok.extern.slf4j.Slf4j;
 import org.ikigaidigital.domain.AccruingTimeDeposit;
 import org.ikigaidigital.domain.interest.InterestAccrualStrategies;
 import org.ikigaidigital.domain.interest.InterestAccrualStrategy;
@@ -25,6 +26,7 @@ import java.util.Objects;
  * </ul>
  * Rates and rounding are unchanged: annual rate / 12 of the balance, rounded HALF_UP to 2 decimal places.
  */
+@Slf4j
 public class TimeDepositCalculator {
 
     private final InterestAccrualStrategies strategies;
@@ -48,23 +50,39 @@ public class TimeDepositCalculator {
      *                                                                    no deposit is changed in that case
      */
     public void updateBalance(List<TimeDeposit> xs) {
+        if (xs.isEmpty()) {
+            log.warn("update balance called on empty list");
+            return;
+        }
+
+        log.info("===== interest calculation batch for {} starting id={} ending id={}",
+                accountingDate,
+                xs.get(0).getId(),
+                xs.get(xs.size() - 1).getId());
+
         // Resolve every strategy first, so an unknown plan type fails before any balance is changed.
         List<InterestAccrualStrategy> resolved = xs.stream().map(strategies::strategyFor).toList();
 
         for (int i = 0; i < xs.size(); i++) {
             TimeDeposit timeDeposit = xs.get(i);
             InterestAccrualStrategy strategy = resolved.get(i);
+            log.info("deposit {}, plan={}, days={}, last_updated_on={}",
+                    timeDeposit.getId(), timeDeposit.getPlanType(), timeDeposit.getDays(),
+                    timeDeposit instanceof AccruingTimeDeposit accruing ? accruing.getLastInterestAppliedOn() : "<not-updated-yet>");
             if (!strategy.isDue(accruing(timeDeposit), accountingDate)) {
                 continue;
             }
 
             double interest = strategy.monthlyInterest(timeDeposit);
             double newBalance = timeDeposit.getBalance() + (new BigDecimal(interest).setScale(2, RoundingMode.HALF_UP)).doubleValue();
+            log.info("interest={}", interest);
             timeDeposit.setBalance(newBalance);
             if (timeDeposit instanceof AccruingTimeDeposit accruing) {
                 accruing.setLastInterestAppliedOn(accountingDate);
             }
         }
+
+        log.info("===== interest calculation batch completed");
     }
 
     private static AccruingTimeDeposit accruing(TimeDeposit timeDeposit) {

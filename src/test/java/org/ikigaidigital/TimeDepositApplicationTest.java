@@ -23,7 +23,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+/**
+ * The batch size is pinned above the number of rows these tests use (6 seeded + 1 inserted), so each
+ * calculation runs as a single batch and a failing run never leaves an earlier batch persisted.
+ */
+@SpringBootTest(properties = "time-deposits.batch-size=100")
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 class TimeDepositApplicationTest {

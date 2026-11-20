@@ -23,4 +23,4 @@ springdoc:
 
 time-deposits:
   # Number of time deposits fetched and updated per database round trip.
-  batch-size: 1000
+  batch-size: 5
