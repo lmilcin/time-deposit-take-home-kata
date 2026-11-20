@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.Types;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
@@ -58,14 +59,17 @@ public class JdbcTimeDepositRepository implements TimeDepositRepository {
     };
 
     private final NamedParameterJdbcTemplate jdbc;
+    private final JdbcInterestCalculationProcessRepository processRepository;
 
-    public JdbcTimeDepositRepository(NamedParameterJdbcTemplate jdbc) {
+    public JdbcTimeDepositRepository(NamedParameterJdbcTemplate jdbc,
+                                     JdbcInterestCalculationProcessRepository processRepository) {
         this.jdbc = jdbc;
+        this.processRepository = processRepository;
     }
 
     @Override
-    public Stream<List<AccruingTimeDeposit>> findAllForInterestCalculationInBatches(int batchSize) {
-        return batchesAfter(OptionalInt.empty(), batchSize);
+    public Stream<List<AccruingTimeDeposit>> findAllForInterestCalculationInBatches(int afterId, int batchSize) {
+        return batchesAfter(OptionalInt.of(afterId), batchSize);
     }
 
     @Override
@@ -81,10 +85,16 @@ public class JdbcTimeDepositRepository implements TimeDepositRepository {
                 false);
     }
 
+    /** The process record is advanced first, so a conflicting run fails before any deposit is written. */
     @Override
     @Transactional
-    public void saveInterestCalculation(List<AccruingTimeDeposit> timeDeposits) {
-        SqlParameterSource[] parameters = timeDeposits.stream()
+    public void saveInterestCalculation(LocalDate accountingDate, int previousLastProcessedDepositId,
+                                        List<AccruingTimeDeposit> batch) {
+        if (batch.isEmpty()) {
+            throw new IllegalArgumentException("batch must not be empty");
+        }
+        processRepository.advance(accountingDate, previousLastProcessedDepositId, batch.get(batch.size() - 1).getId());
+        SqlParameterSource[] parameters = batch.stream()
                 .map(timeDeposit -> new MapSqlParameterSource()
                         .addValue("id", timeDeposit.getId())
                         .addValue("balance", BigDecimal.valueOf(timeDeposit.getBalance()))

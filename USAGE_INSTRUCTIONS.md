@@ -57,6 +57,7 @@ This file documents:
      (basic, student) or 45 days (premium); then every deposit's `days` advances by one.
      With the seed data and `accounting_date=2026-03-09`, deposits 2, 3, 4 and 6 are due
      (deposit 4 is a student deposit older than a year, so its balance does not change).
+     The first run must be for `2026-03-09`; see [Running interest calculation](#running-interest-calculation).
 
 The OpenAPI contract that Swagger UI renders is available at
 <http://localhost:8080/openapi.yaml>.
@@ -68,9 +69,30 @@ curl --compressed http://localhost:8080/time-deposits
 curl -X POST -i "http://localhost:8080/time-deposits/calculate-interest?accounting_date=2026-03-09"
 ```
 
+## Running interest calculation
+
 The accounting date is the date the batch runs for and may differ from the current calendar
-date. Running the same accounting date again applies no further interest, but still advances
-`days` (preventing repeated runs is not implemented yet).
+date. Runs must be for consecutive accounting dates, one run per date:
+
+* On a fresh database, the first run must be for `2026-03-09` (the database is initialized as if
+  the run for `2026-03-08` had completed). Each next run must be for the following day.
+* Repeating a completed date, skipping a date, or going back returns `409 Conflict`, and nothing is
+  changed. The response body says which date is expected, e.g.
+
+  ```json
+  {"title":"Conflict","status":409,"detail":"Interest calculation for 2026-03-11 is not allowed: the latest run, for 2026-03-09, is completed. The next run must be for 2026-03-10."}
+  ```
+
+* If a run fails or is interrupted (e.g. an unknown plan type, or the application stopped), call the
+  endpoint again with the **same** accounting date. It continues after the last committed batch, so
+  every deposit is processed exactly once. Until then, other dates are rejected with `409`.
+* If two runs overlap, only one makes progress; the other stops with `409`.
+
+The state of the latest run can be inspected in the database:
+
+```bash
+docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT * FROM interest_calculation_process"'
+```
 
 JSON responses are gzip-compressed when the client sends `Accept-Encoding: gzip`
 (`curl --compressed` does; Swagger UI and browsers do so automatically).

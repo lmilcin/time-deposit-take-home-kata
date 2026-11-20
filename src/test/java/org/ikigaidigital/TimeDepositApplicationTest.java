@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -110,6 +111,26 @@ class TimeDepositApplicationTest {
                 .containsExactly(null, accountingDate, accountingDate, accountingDate, null, accountingDate);
     }
 
+    /** The seeded process row is a completed run for 2026-03-08, so runs must start on 2026-03-09. */
+    @Test
+    @Transactional
+    void acceptsOnlyConsecutiveAccountingDates() throws Exception {
+        List<TimeDeposit> before = loadTimeDeposits();
+
+        calculateInterest("2026-03-09").andExpect(status().isNoContent());
+        calculateInterest("2026-03-09")
+                .andExpect(status().isConflict())
+                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.detail").value(containsString("next run must be for 2026-03-10")));
+        calculateInterest("2026-03-11").andExpect(status().isConflict());
+        calculateInterest("2026-03-10").andExpect(status().isNoContent());
+
+        assertThat(loadTimeDeposits())
+                .extracting(TimeDeposit::getDays)
+                .containsExactlyElementsOf(before.stream().map(td -> td.getDays() + 2).toList());
+    }
+
     @Test
     @Transactional
     void failsInterestCalculationForUnknownPlanTypeWithoutUpdatingDeposits() {
@@ -121,6 +142,10 @@ class TimeDepositApplicationTest {
                 .hasRootCauseInstanceOf(UnknownPlanTypeException.class);
 
         assertThat(loadTimeDeposits()).usingRecursiveFieldByFieldElementComparator().isEqualTo(before);
+    }
+
+    private ResultActions calculateInterest(String accountingDate) throws Exception {
+        return mockMvc.perform(post("/time-deposits/calculate-interest").param("accounting_date", accountingDate));
     }
 
     private List<TimeDeposit> loadTimeDeposits() {

@@ -48,6 +48,13 @@ paths:
         accrual start. For each deposit where it is due, interest is applied and the accounting date
         is recorded as the date interest was last applied. Afterwards `days` of every time deposit
         advances by one. The process fails if any time deposit has an unknown plan type.
+
+
+        Runs must be for consecutive accounting dates: a new run is only accepted for the day after the
+        latest completed run. A run that did not complete (e.g. it failed or was interrupted) must be
+        resumed by calling this again with the same accounting date; it continues after the last committed
+        batch, so every time deposit is processed exactly once per accounting date. Only one run can make
+        progress at a time.
       parameters:
         - name: accounting_date
           in: query
@@ -63,10 +70,38 @@ paths:
           description: Interest batch completed for the accounting date
         '400':
           description: accounting_date is missing or not a valid date
+        '409':
+          description: >-
+            The accounting date is neither the day after the latest completed run nor the date of a run
+            that has not completed, or another run progressed concurrently. Nothing is calculated.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '500':
           description: Interest batch failed, e.g. a time deposit has an unknown plan type
 components:
   schemas:
+    Problem:
+      description: Error details (RFC 9457).
+      type: object
+      required: [title, status, detail]
+      properties:
+        title:
+          type: string
+          example: Conflict
+        status:
+          type: integer
+          format: int32
+          example: 409
+        detail:
+          type: string
+          example: >-
+            Interest calculation for 2026-03-11 is not allowed: the latest run, for 2026-03-09, is completed.
+            The next run must be for 2026-03-10.
     TimeDepositList:
       description: Time deposits ordered by `id` ascending.
       type: array

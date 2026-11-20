@@ -1,5 +1,6 @@
 package org.ikigaidigital.config;
 
+import org.ikigaidigital.application.port.out.InterestCalculationProcessRepository;
 import org.ikigaidigital.application.port.out.TimeDepositRepository;
 import org.ikigaidigital.application.service.TimeDepositService;
 import org.ikigaidigital.domain.interest.BasicPlanAccrualStrategy;
@@ -40,8 +41,9 @@ public class ApplicationConfiguration {
 
     @Bean
     TimeDepositService timeDepositService(TimeDepositRepository repository,
+                                          InterestCalculationProcessRepository processRepository,
                                           InterestAccrualStrategies accrualStrategies,
                                           @Value("${time-deposits.batch-size}") int batchSize) {
-        return new TimeDepositService(repository, accrualStrategies, batchSize);
+        return new TimeDepositService(repository, processRepository, accrualStrategies, batchSize);
     }
 }
