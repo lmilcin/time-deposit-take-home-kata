@@ -66,7 +66,7 @@ public class TimeDepositCalculator {
         for (int i = 0; i < xs.size(); i++) {
             TimeDeposit timeDeposit = xs.get(i);
             InterestAccrualStrategy strategy = resolved.get(i);
-            log.info("deposit {}, plan={}, days={}, last_updated_on={}",
+            log.info("deposit {}, plan={}, days={}, last_interest_applied_on={}",
                     timeDeposit.getId(), timeDeposit.getPlanType(), timeDeposit.getDays(),
                     timeDeposit instanceof AccruingTimeDeposit accruing ? accruing.getLastInterestAppliedOn() : "<not-updated-yet>");
             if (!strategy.isDue(accruing(timeDeposit), accountingDate)) {

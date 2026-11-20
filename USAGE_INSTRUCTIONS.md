@@ -69,6 +69,19 @@ curl --compressed http://localhost:8080/time-deposits
 curl -X POST -i "http://localhost:8080/time-deposits/calculate-interest?accounting_date=2026-03-09"
 ```
 
+JSON responses are gzip-compressed when the client sends `Accept-Encoding: gzip`
+(`curl --compressed` does; Swagger UI and browsers do so automatically).
+
+`GET /time-deposits` streams the response, so it works for any number of deposits. Results
+are not guaranteed to be consistent while interest is being calculated concurrently.
+
+Because results are ordered by `id`, an interrupted fetch can be resumed by passing the `id`
+of the last time deposit received as `afterId` (exclusive):
+
+```bash
+curl --compressed "http://localhost:8080/time-deposits?afterId=3"   # returns deposits with id > 3
+```
+
 ## Running interest calculation
 
 The accounting date is the date the batch runs for and may differ from the current calendar
@@ -94,18 +107,6 @@ The state of the latest run can be inspected in the database:
 docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT * FROM interest_calculation_process"'
 ```
 
-JSON responses are gzip-compressed when the client sends `Accept-Encoding: gzip`
-(`curl --compressed` does; Swagger UI and browsers do so automatically).
-
-`GET /time-deposits` streams the response, so it works for any number of deposits. Results
-are not guaranteed to be consistent while interest is being calculated concurrently.
-
-Because results are ordered by `id`, an interrupted fetch can be resumed by passing the `id`
-of the last time deposit received as `afterId` (exclusive):
-
-```bash
-curl --compressed "http://localhost:8080/time-deposits?afterId=3"   # returns deposits with id > 3
-```
 
 ## Stop and reset
 
